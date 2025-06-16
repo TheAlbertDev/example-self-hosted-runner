@@ -1,0 +1,3 @@
+stm32cube/
+build/
+stm32cube_blink_led_tests

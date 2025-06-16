@@ -1,0 +1,42 @@
+name: 🔌 Check STM32Cube Blink LED
+on:
+  pull_request:
+    paths:
+      - stm32cube/blink_led/**
+      - test/stm32cube/blink_led/**
+
+jobs:
+  unit_tests:
+    name: 🧪 Unit tests
+    runs-on: self-hosted
+    env:
+      CPPUTEST_HOME: /opt/cpputest
+    steps:
+    - name: 📥 Checkout code 
+      uses: actions/checkout@v4
+    - name: 🧬 Run unit tests
+      run: |
+        cd ${{ github.workspace }}/test/stm32cube/blink_led/unit
+        make
+  acceptance_tests:
+    name: ✅ Acceptance tests
+    runs-on: self-hosted
+    steps:
+    - name: 📥 Checkout code 
+      uses: actions/checkout@v4
+    - name: 🛠️ Set up PlatformIO CLI project just for flashing
+      run: |
+        mkdir ${{ github.workspace }}/build
+        pio project init -d build -b nucleo_f401re
+        echo "debug_tool = stlink" >> build/platformio.ini
+    - name: 🏗️ Upload .elf file
+      run: |
+        openocd -d2 -s ~/.platformio/packages/tool-openocd/openocd/scripts -f ~/.platformio/packages/tool-openocd/openocd/scripts/board/st_nucleo_f4.cfg -c "program \"$(readlink -f stm32cube/blink_led/Debug/*.elf | head -n1)\" verify reset; shutdown;"
+    - name: 🧬 Run acceptance tests
+      run: |
+        cd ${{ github.workspace }}/test/stm32cube/blink_led/acceptance
+        /usr/bin/python3 -m venv .venv
+        source .venv/bin/activate
+        pip install -r requirements.txt
+        python -m pytest -v
+        

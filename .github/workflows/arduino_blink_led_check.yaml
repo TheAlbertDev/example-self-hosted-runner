@@ -1,0 +1,66 @@
+name: 🔌 Check Arduino Blink LED
+on:
+  pull_request:
+    paths:
+      - arduino/blink_led/**
+      - test/arduino/blink_led/**
+
+jobs:
+  check_arduino_project:
+    name: 🔧 Build Arduino Project
+    runs-on: self-hosted
+    steps:
+      - name: 📥 Checkout code 
+        uses: actions/checkout@v4
+      - name: 🛠️ Set up PlatformIO CLI project
+        run: |
+          mkdir ${{ github.workspace }}/build
+          pio project init -d build -b nucleo_f401re
+          cd ${{ github.workspace }}/build
+          echo "debug_tool = stlink" >> platformio.ini
+          cp ${{ github.workspace }}/arduino/blink_led/* ${{ github.workspace }}/build/src || true
+          mv ${{ github.workspace }}/build/src/blink_led.ino ${{ github.workspace }}/build/src/blink_led.cpp
+          sed -i '1i#include "Arduino.h"' ${{ github.workspace }}/build/src/blink_led.cpp
+      - name: 🏗️ Build PlatformIO CLI project
+        run: |
+          cd ${{ github.workspace }}/build
+          pio run
+  unit_tests:
+    name: 🧪 Unit tests
+    runs-on: self-hosted
+    env:
+      CPPUTEST_HOME: /opt/cpputest
+    steps:
+    - name: 📥 Checkout code 
+      uses: actions/checkout@v4
+    - name: 🧬 Run unit tests
+      run: |
+        cd ${{ github.workspace }}/test/arduino/blink_led/unit
+        make
+  acceptance_tests:
+    name: ✅ Acceptance tests
+    runs-on: self-hosted
+    steps:
+    - name: 📥 Checkout code 
+      uses: actions/checkout@v4
+    - name: 🛠️ Set up PlatformIO CLI project
+      run: |
+        mkdir ${{ github.workspace }}/build
+        pio project init -d build -b nucleo_f401re
+        cd ${{ github.workspace }}/build
+        echo "debug_tool = stlink" >> platformio.ini
+        cp ${{ github.workspace }}/arduino/blink_led/* ${{ github.workspace }}/build/src || true
+        mv ${{ github.workspace }}/build/src/blink_led.ino ${{ github.workspace }}/build/src/blink_led.cpp
+        sed -i '1i#include "Arduino.h"' ${{ github.workspace }}/build/src/blink_led.cpp
+    - name: 🏗️ Build and upload PlatformIO CLI project
+      run: |
+        cd ${{ github.workspace }}/build
+        pio run --target upload
+    - name: 🧬 Run acceptance tests
+      run: |
+        cd ${{ github.workspace }}/test/arduino/blink_led/acceptance
+        /usr/bin/python3 -m venv .venv
+        source .venv/bin/activate
+        pip install -r requirements.txt
+        python -m pytest -v
+        
